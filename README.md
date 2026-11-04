@@ -8,4 +8,11 @@ Extra stuff:
 - uosc integration for search input field and feed options listing (home/recommendation,subscription etc.)
 - added extra feed options for related video based on "all" and "related" chips in youtube
 - make search input stay available in next search field popup for same mpv instance
-- keep cache for search, home, related fetches for a duration of choice (independent of mpv instance, can be refetched at will)
+- keep cache from search, home, related fetches for a duration of choice (independent of mpv instance, can be refetched at will)
+
+### screenshots
+<img width="594" height="534" alt="image" src="https://github.com/user-attachments/assets/367550de-6fb5-4ee8-9473-77faa7d029cb" />
+
+<img width="499" height="346" alt="image" src="https://github.com/user-attachments/assets/2b6cc28a-4783-4312-8bbe-f1fe39b4065a" />
+
+
