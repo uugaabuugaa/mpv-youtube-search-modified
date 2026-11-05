@@ -12,6 +12,7 @@ Probably not a good idea to use it since it's meant for personal use and i edite
 - made it purple cause it's cuter
 - better arrow navigation (n/p still works but arrow keys can navigate pages and within rows too)
 - better thumbnail view
+- fix screen flicker
 
 ### Screenshots
 
