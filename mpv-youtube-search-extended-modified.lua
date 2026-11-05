@@ -653,6 +653,26 @@ end
 -- Thumbnails
 --------------------------------------------------------------------------
 
+
+
+local ROUND_CORNERS = true
+local CORNER_RADIUS = 14
+
+local thumb_filter
+if ROUND_CORNERS then
+    local r = CORNER_RADIUS
+    local m = string.format(
+        "if(gt(abs(W/2-X),W/2-%d)*gt(abs(H/2-Y),H/2-%d),clip(%d-hypot(%d-(W/2-abs(W/2-X)),%d-(H/2-abs(H/2-Y)))+0.5,0,1),1)",
+        r, r, r, r, r)
+    thumb_filter = string.format(
+        "scale=%d:%d,format=gbrap,geq=r='r(X,Y)*(%s)':g='g(X,Y)*(%s)':b='b(X,Y)*(%s)':a='255*(%s)',format=bgra",
+        THUMB_W, THUMB_H, m, m, m, m)
+else
+    thumb_filter = "scale=" .. THUMB_W .. ":" .. THUMB_H
+end
+
+
+
 local function fetch_thumbnail(vid_id, page)
     if not vid_id or not page then return end
     local out_file = get_bgra_path(vid_id, page)
@@ -673,7 +693,7 @@ local function fetch_thumbnail(vid_id, page)
     local thumb_base = thumb_dir .. "/" .. tostring(vid_id) .. "_p" .. tostring(page)
     local thumb_jpg = thumb_base .. ".jpg"
 
-    local img_url = "https://i.ytimg.com/vi/" .. vid_id .. "/hqdefault.jpg"
+    local img_url = "https://i.ytimg.com/vi/" .. vid_id .. "/mqdefault.jpg"
     local curl_args = { "curl", "-s", "-L", "-o", thumb_jpg, img_url }
 
     mp.command_native_async({
@@ -693,7 +713,7 @@ local function fetch_thumbnail(vid_id, page)
             opts.ffmpeg_path,
             "-y", "-hide_banner", "-loglevel", "error",
             "-i", thumb_jpg,
-            "-vf", "scale=" .. THUMB_W .. ":" .. THUMB_H,
+            "-vf", thumb_filter,
             "-f", "rawvideo", "-pix_fmt", "bgra", out_file,
         }
 
@@ -743,6 +763,26 @@ local function wrap_title(title, max_chars, max_lines)
     return table.concat(lines, "\\N")  -- ASS line break
 end
 
+
+
+
+
+-- ASS path for a rounded rectangle (w x h, corner radius r)
+local function rounded_path(w, h, r)
+    local k = r * 0.5523
+    local p = {
+        string.format("m %.1f 0", r),
+        string.format("l %.1f 0", w - r),
+        string.format("b %.1f 0 %.1f %.1f %.1f %.1f", w - r + k, w, r - k, w, r),
+        string.format("l %.1f %.1f", w, h - r),
+        string.format("b %.1f %.1f %.1f %.1f %.1f %.1f", w, h - r + k, w - r + k, h, w - r, h),
+        string.format("l %.1f %.1f", r, h),
+        string.format("b %.1f %.1f %.1f %.1f %.1f %.1f", r - k, h, 0, h - r + k, 0, h - r),
+        string.format("l 0 %.1f", r),
+        string.format("b 0 %.1f %.1f 0 %.1f 0", r - k, r - k, r),
+    }
+    return table.concat(p, " ")
+end
 
 
 
@@ -815,7 +855,7 @@ function draw_grid()
         if not has_image then
             local thumb_status = e.id and state.thumbnail_status[get_thumb_key(e.id, state.page)] or "failed"
             local placeholder = thumb_status == "loading" and "Loading..." or "No Image"
-            ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\1a&H00&}{\\1c&H222222&}{\\p1}m 0 0 l %d 0 l %d %d l 0 %d{\\p0}\n", x, y, THUMB_W, THUMB_W, THUMB_H, THUMB_H)
+            ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\1a&H00&}{\\1c&H222222&}{\\p1}%s{\\p0}\n", x, y, rounded_path(THUMB_W, THUMB_H, CORNER_RADIUS))
             ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\fs26\\1c&H777777&}%s\n", x + (THUMB_W/2) - 45, y + (THUMB_H/2) - 15, placeholder)
         end
 
@@ -837,12 +877,12 @@ function draw_grid()
         if i == state.cursor then
             local bx, by = x - 4, y - 4
             local bw, bh = THUMB_W + 8, THUMB_H + 8
-            ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\3c&FCBCCD&}{\\bord4}{\\1a&HFF&}{\\p1}m 0 0 l %d 0 l %d %d l 0 %d{\\p0}\n", bx, by, bw, bw, bh, bh)
+            ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\3c&FCBCCD&}{\\bord4}{\\1a&HFF&}{\\p1}%s{\\p0}\n", bx, by, rounded_path(bw, bh, CORNER_RADIUS + 4))
         end
     end
 
     local footer_y = START_Y + (2 * (THUMB_H + PAD_Y)) - 15
-    ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\fs18\\1a&H00&\\1c&F0DCF5&}⌨ [Arrows] Navigate [Enter] Play [Shift+Enter] Append [N] [N] Next Page [P] Prev Page [Ctrl+R] Refresh [ESC] Close\n", START_X, footer_y)
+    ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\fs18\\1a&H00&\\1c&F0DCF5&}⌨ [Arrows] Navigate [Enter] Play [Shift+Enter] Append [N] Next Page [P] Prev Page [Ctrl+R] Refresh [ESC] Close\n", START_X, footer_y)
 
     ov_ass.data = ass
     ov_ass:update()
