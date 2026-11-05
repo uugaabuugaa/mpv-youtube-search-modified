@@ -556,10 +556,13 @@ local function show_standalone_feedback(text, seconds)
     end)
 end
 
+local shown_overlays = {}   -- slot -> "x,y,path" of what is currently displayed
+
 local function clear_overlays()
     for i = 1, opts.page_size do
         mp.commandv("overlay-remove", BASE_ID + i)
     end
+    shown_overlays = {}
 end
 
 local function resize_for_grid()
@@ -828,7 +831,7 @@ function draw_grid()
         ass = ass .. string.format("{\\an8\\pos(%d,55)}{\\fs24\\b1\\1c&000000&\\3c&FCBCCD&\\bord3} %s {\\b0}\n", osd_w / 2, escape_ass(state.feedback))
     end
 
-    clear_overlays()
+    
 
     for i = 1, math.min(#state.results, opts.page_size) do
         local e = state.results[i]
@@ -846,13 +849,21 @@ function draw_grid()
                 local size = f:seek("end")
                 f:close()
                 if size and size >= EXPECTED_SIZE then
-                    mp.commandv("overlay-add", BASE_ID + i, math.floor(x), math.floor(y), bgra_path, 0, "bgra", THUMB_W, THUMB_H, THUMB_W * 4)
+                    local sig = math.floor(x) .. "," .. math.floor(y) .. "," .. bgra_path
+                    if shown_overlays[i] ~= sig then
+                        mp.commandv("overlay-add", BASE_ID + i, math.floor(x), math.floor(y), bgra_path, 0, "bgra", THUMB_W, THUMB_H, THUMB_W * 4)
+                        shown_overlays[i] = sig
+                    end
                     has_image = true
                 end
             end
         end
 
         if not has_image then
+                if shown_overlays[i] then
+                mp.commandv("overlay-remove", BASE_ID + i)
+                shown_overlays[i] = nil
+            end
             local thumb_status = e.id and state.thumbnail_status[get_thumb_key(e.id, state.page)] or "failed"
             local placeholder = thumb_status == "loading" and "Loading..." or "No Image"
             ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\1a&H00&}{\\1c&H222222&}{\\p1}%s{\\p0}\n", x, y, rounded_path(THUMB_W, THUMB_H, CORNER_RADIUS))
@@ -880,6 +891,17 @@ function draw_grid()
             ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\3c&FCBCCD&}{\\bord4}{\\1a&HFF&}{\\p1}%s{\\p0}\n", bx, by, rounded_path(bw, bh, CORNER_RADIUS + 4))
         end
     end
+
+
+
+    for i = math.min(#state.results, opts.page_size) + 1, opts.page_size do
+        if shown_overlays[i] then
+            mp.commandv("overlay-remove", BASE_ID + i)
+            shown_overlays[i] = nil
+        end
+    end
+
+
 
     local footer_y = START_Y + (2 * (THUMB_H + PAD_Y)) - 15
     ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\fs18\\1a&H00&\\1c&F0DCF5&}⌨ [Arrows] Navigate [Enter] Play [Shift+Enter] Append [N] Next Page [P] Prev Page [Ctrl+R] Refresh [ESC] Close\n", START_X, footer_y)
