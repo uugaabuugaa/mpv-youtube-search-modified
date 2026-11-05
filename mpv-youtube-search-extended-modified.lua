@@ -936,7 +936,7 @@ function draw_grid()
         end
 
         -- solid black box behind the title + channel text
-        ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\1a&H00&\\1c&H000000&\\bord0\\shad0}{\\p1}m 0 0 l %d 0 l %d %d l 0 %d{\\p0}\n", x, y + THUMB_H + 4, THUMB_W, THUMB_W, 85, 85)
+        -- ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\1a&H00&\\1c&H000000&\\bord0\\shad0}{\\p1}m 0 0 l %d 0 l %d %d l 0 %d{\\p0}\n", x, y + THUMB_H + 4, THUMB_W, THUMB_W, 85, 85)
 
         local title = escape_ass(wrap_title(e.title or "(no title)", (THUMB_W - 12) * 18 / 22, 2)) --edited
 
@@ -968,7 +968,7 @@ function draw_grid()
 
 
     local footer_y = START_Y + (2 * (THUMB_H + PAD_Y)) - 15
-    ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\fs18\\1a&H00&\\1c&F0DCF5&}⌨ [Arrows] Navigate [Enter] Play [Shift+Enter] Append [N] Next Page [P] Prev Page [Ctrl+R] Refresh [ESC] Close\n", START_X, footer_y)
+    ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\fs15\\1a&H00&\\1c&F0DCF5&}⌨ [Arrows] Navigate [Enter] Play [Shift+Enter] Append [N] Next Page [P] Prev Page [Ctrl+R] Refresh [ESC] Close\n", START_X, footer_y)
 
     ov_ass.data = ass
     ov_ass:update()
