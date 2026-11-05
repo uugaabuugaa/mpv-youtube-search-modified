@@ -2,7 +2,7 @@
 
 Edited from [Luendor's mpv-youtube-search script (extended version)](https://github.com/Lunedor/mpv-youtube-search ).
 
-Probably not a good idea to use it since it's meant for personal use and i edited it using Claude. Seriously use Luendor's instead. I don't know what mistakes are in it. Feel free to take a look and use/edit/fix if there's any mistakes here.
+Probably not a good idea to use it since it's meant for personal use and i edited it using Claude. Although I don't know what mistakes are in it everything kind of just works. Feel free to take a look and use/edit/fix if there's any mistakes here.
 
 ### Extra stuff:
 - uosc integration for search input field and feed options listing (home/recommendation,subscription etc.)
