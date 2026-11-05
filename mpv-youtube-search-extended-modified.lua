@@ -745,23 +745,88 @@ end
 -- Grid rendering(edited)
 --------------------------------------------------------------------------
 
-local function wrap_title(title, max_chars, max_lines)
-    local lines, cur = {}, ""
-    for word in title:gmatch("%S+") do
-        if cur ~= "" and #cur + #word + 1 > max_chars then
-            table.insert(lines, cur)
-            cur = word
-        else
-            cur = (cur == "") and word or (cur .. " " .. word)
+local UTF8_CHAR = "[\1-\127\194-\244][\128-\191]*"
+local NARROW_CHARS = "iljtfI.,:;'!|()[]/-"
+local WIDE_CHARS = "WMmw@"
+
+-- Estimated on-screen width (px) of one UTF-8 character in the bold 18pt title font
+local function char_width(ch)
+    local n = #ch
+    if n == 1 then
+        if ch == " " then return 3.6 end
+        if NARROW_CHARS:find(ch, 1, true) then return 3.8 end
+        if WIDE_CHARS:find(ch, 1, true) then return 10.5 end
+        if ch:match("%u") then return 8.6 end
+        return 6.9
+    elseif n == 2 then
+        return 7.5
+    else
+        return 14.7   -- Hangul / CJK / emoji
+    end
+end
+
+local function text_width(str, scale)
+    local w = 0
+    for ch in str:gmatch(UTF8_CHAR) do w = w + char_width(ch) end
+    return w * (scale or 1)
+end
+
+-- Always trims the text and appends "..." (never cuts through a character)
+local function ellipsize(str, max_px, scale)
+    scale = scale or 1
+    local dots = 3 * char_width(".") * scale
+    local out, w = {}, 0
+    for ch in str:gmatch(UTF8_CHAR) do
+        local cw = char_width(ch) * scale
+        if w + cw + dots > max_px then break end
+        out[#out + 1] = ch
+        w = w + cw
+    end
+    return (table.concat(out):gsub("%s+$", "")) .. "..."
+end
+
+local function fit_ellipsis(str, max_px, scale)
+    if text_width(str, scale) <= max_px then return str end
+    return ellipsize(str, max_px, scale)
+end
+
+local function wrap_title(title, max_px, max_lines)
+    local lines = {}
+    local line, line_w, last_space = {}, 0, nil
+
+    local function flush(keep_n)
+        local kept = {}
+        for i = 1, keep_n do kept[i] = line[i] end
+        table.insert(lines, (table.concat(kept):gsub("%s+$", "")))
+        local rest = {}
+        for i = keep_n + 1, #line do rest[#rest + 1] = line[i] end
+        line, line_w, last_space = rest, 0, nil
+        for i, c in ipairs(line) do
+            line_w = line_w + char_width(c)
+            if c == " " then last_space = i end
         end
     end
-    if cur ~= "" then table.insert(lines, cur) end
+
+    for ch in title:gmatch(UTF8_CHAR) do
+        if not (ch == " " and #line == 0) then
+            local w = char_width(ch)
+            if line_w + w > max_px and ch ~= " " then
+                flush(last_space or #line)
+            end
+            if not (ch == " " and #line == 0) then
+                line[#line + 1] = ch
+                line_w = line_w + w
+                if ch == " " then last_space = #line end
+            end
+        end
+    end
+    if #line > 0 then flush(#line) end
 
     if #lines > max_lines then
-        local trimmed = {}
-        for i = 1, max_lines do trimmed[i] = lines[i] end
-        trimmed[max_lines] = trimmed[max_lines]:sub(1, max_chars - 3) .. "..."
-        lines = trimmed
+        local kept = {}
+        for i = 1, max_lines do kept[i] = lines[i] end
+        kept[max_lines] = ellipsize(kept[max_lines], max_px, 1)
+        lines = kept
     end
     return table.concat(lines, "\\N")  -- ASS line break
 end
@@ -871,19 +936,18 @@ function draw_grid()
         end
 
         -- solid black box behind the title + channel text
-        ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\1a&H00&\\1c&H000000&\\bord0\\shad0}{\\p1}m 0 0 l %d 0 l %d %d l 0 %d{\\p0}\n", x, y + THUMB_H + 4, THUMB_W, THUMB_W, 80, 80)
+        ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\1a&H00&\\1c&H000000&\\bord0\\shad0}{\\p1}m 0 0 l %d 0 l %d %d l 0 %d{\\p0}\n", x, y + THUMB_H + 4, THUMB_W, THUMB_W, 85, 85)
 
-        local title = escape_ass(wrap_title(e.title or "(no title)", 38, 2)) --edited
+        local title = escape_ass(wrap_title(e.title or "(no title)", (THUMB_W - 12) * 18 / 22, 2)) --edited
 
         local clip_tag = string.format("\\clip(%d,%d,%d,%d)", x, 0, x + THUMB_W - 5, osd_h)
-        ass = ass .. string.format("{\\an7\\pos(%d,%d)%s}{\\fs18\\b1\\1a&H00&\\1c&FCBCCD&}%s\n", x, y + THUMB_H + 10, clip_tag, title)
+        ass = ass .. string.format("{\\an7\\pos(%d,%d)%s}{\\fs22\\b1\\1a&H00&\\1c&FCBCCD&}%s\n", x, y + THUMB_H + 10, clip_tag, title)
 
-        local channel = e.channel or e.uploader or ""
-        if #channel > 20 then channel = channel:sub(1, 17) .. "..." end
+        local channel = fit_ellipsis(e.channel or e.uploader or "", 190, 14 / 18)
         channel = escape_ass(channel)
 
         local dur = e.dur_str or (e.duration and e.duration > 0 and fmt_duration(e.duration)) or "VIDEO"
-        ass = ass .. string.format("{\\an7\\pos(%d,%d)%s}{\\fs14\\b0\\1c&F0DCF5&}👤 %s | ⏱ %s\n", x, y + THUMB_H + 55, clip_tag, channel, dur) --edited
+        ass = ass .. string.format("{\\an7\\pos(%d,%d)%s}{\\fs14\\b0\\1c&F0DCF5&}👤 %s | ⏱ %s\n", x, y + THUMB_H + 62, clip_tag, channel, dur) --edited
 
         if i == state.cursor then
             local bx, by = x - 4, y - 4
