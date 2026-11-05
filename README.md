@@ -13,11 +13,10 @@ Probably not a good idea to use it since it's meant for personal use and i edite
 - better arrow navigation (n/p still works but arrow keys can navigate pages and within rows too)
 - better thumbnail view
 - fix screen flicker
+- better titles
 
 ### Screenshots
-
-<img width="1352" height="760" alt="image" src="https://github.com/user-attachments/assets/0364161e-d105-4419-8150-cef8f6954442" />
-
+<img width="1366" height="768" alt="image" src="https://github.com/user-attachments/assets/97adcf44-db96-49b9-a541-cafd45c16366" />
 
 <img width="594" height="534" alt="image" src="https://github.com/user-attachments/assets/367550de-6fb5-4ee8-9473-77faa7d029cb" />
 
