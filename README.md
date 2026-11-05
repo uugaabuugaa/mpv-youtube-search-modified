@@ -11,8 +11,13 @@ Probably not a good idea to use it since it's meant for personal use and i edite
 - keep cache from search, home, related fetches for a duration of choice (independent of mpv instance, can be refetched at will)
 - made it purple cause it's cuter
 - better arrow navigation (n/p still works but arrow keys can navigate pages and within rows too)
+- better thumbnail view
 
 ### Screenshots
+
+<img width="1352" height="760" alt="image" src="https://github.com/user-attachments/assets/0364161e-d105-4419-8150-cef8f6954442" />
+
+
 <img width="594" height="534" alt="image" src="https://github.com/user-attachments/assets/367550de-6fb5-4ee8-9473-77faa7d029cb" />
 
 <img width="499" height="346" alt="image" src="https://github.com/user-attachments/assets/2b6cc28a-4783-4312-8bbe-f1fe39b4065a" />
