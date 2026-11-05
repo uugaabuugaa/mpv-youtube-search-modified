@@ -543,7 +543,7 @@ local function show_standalone_feedback(text, seconds)
     feedback_ass.res_y = osd_h
     feedback_ass.data = string.format(
         "{\\an5\\pos(%d,%d)}" ..
-        "{\\fs30\\b1\\1c&HFFFFFF&\\3c&H202020&\\bord3}" ..
+        "{\\fs30\\b1\\1c&000000&\\3c&FCBCCD&\\bord3}" ..
         "%s",
         math.floor(osd_w / 2),
         math.floor(osd_h / 2),
@@ -586,6 +586,21 @@ local function restore_window()
         state.saved_geometry = nil
     end
 end
+
+
+-- Hide uosc elements only while the grid is open (uosc's own settings are untouched)
+local UOSC_HIDE = "pause_indicator,buffering_indicator,idle_indicator"
+
+local function hide_uosc_elements()
+    mp.commandv("script-message-to", "uosc", "disable-elements", mp.get_script_name(), UOSC_HIDE)
+end
+
+local function show_uosc_elements()
+    mp.commandv("script-message-to", "uosc", "disable-elements", mp.get_script_name(), "")
+end
+
+
+
 
 local function show_feedback(text)
     state.feedback = text
@@ -767,10 +782,10 @@ function draw_grid()
         title_text = "📺 " .. feed_label
     end
 
-    ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\fs40\\b1\\1a&H00&\\1c&HFFFFFF&}%s (Page %d){\\b0}\n", START_X, head_y, title_text, state.page)
+    ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\fs40\\b1\\1a&H00&\\1c&FCBCCD&}%s (Page %d){\\b0}\n", START_X, head_y, title_text, state.page)
 
     if state.feedback then
-        ass = ass .. string.format("{\\an8\\pos(%d,55)}{\\fs24\\b1\\1c&HFFFFFF&\\3c&H0088CC&\\bord3} %s {\\b0}\n", osd_w / 2, escape_ass(state.feedback))
+        ass = ass .. string.format("{\\an8\\pos(%d,55)}{\\fs24\\b1\\1c&000000&\\3c&FCBCCD&\\bord3} %s {\\b0}\n", osd_w / 2, escape_ass(state.feedback))
     end
 
     clear_overlays()
@@ -804,27 +819,30 @@ function draw_grid()
             ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\fs26\\1c&H777777&}%s\n", x + (THUMB_W/2) - 45, y + (THUMB_H/2) - 15, placeholder)
         end
 
+        -- solid black box behind the title + channel text
+        ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\1a&H00&\\1c&H000000&\\bord0\\shad0}{\\p1}m 0 0 l %d 0 l %d %d l 0 %d{\\p0}\n", x, y + THUMB_H + 4, THUMB_W, THUMB_W, 80, 80)
+
         local title = escape_ass(wrap_title(e.title or "(no title)", 38, 2)) --edited
 
         local clip_tag = string.format("\\clip(%d,%d,%d,%d)", x, 0, x + THUMB_W - 5, osd_h)
-        ass = ass .. string.format("{\\an7\\pos(%d,%d)%s}{\\fs18\\b1\\1a&H00&\\1c&HFFFFFF&}%s\n", x, y + THUMB_H + 10, clip_tag, title)
+        ass = ass .. string.format("{\\an7\\pos(%d,%d)%s}{\\fs18\\b1\\1a&H00&\\1c&FCBCCD&}%s\n", x, y + THUMB_H + 10, clip_tag, title)
 
         local channel = e.channel or e.uploader or ""
         if #channel > 20 then channel = channel:sub(1, 17) .. "..." end
         channel = escape_ass(channel)
 
         local dur = e.dur_str or (e.duration and e.duration > 0 and fmt_duration(e.duration)) or "VIDEO"
-        ass = ass .. string.format("{\\an7\\pos(%d,%d)%s}{\\fs14\\b0\\1c&HAAAAAA&}👤 %s | ⏱ %s\n", x, y + THUMB_H + 55, clip_tag, channel, dur) --edited
+        ass = ass .. string.format("{\\an7\\pos(%d,%d)%s}{\\fs14\\b0\\1c&F0DCF5&}👤 %s | ⏱ %s\n", x, y + THUMB_H + 55, clip_tag, channel, dur) --edited
 
         if i == state.cursor then
             local bx, by = x - 4, y - 4
             local bw, bh = THUMB_W + 8, THUMB_H + 8
-            ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\3c&H00FFFF&}{\\bord4}{\\1a&HFF&}{\\p1}m 0 0 l %d 0 l %d %d l 0 %d{\\p0}\n", bx, by, bw, bw, bh, bh)
+            ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\3c&FCBCCD&}{\\bord4}{\\1a&HFF&}{\\p1}m 0 0 l %d 0 l %d %d l 0 %d{\\p0}\n", bx, by, bw, bw, bh, bh)
         end
     end
 
     local footer_y = START_Y + (2 * (THUMB_H + PAD_Y)) - 15
-    ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\fs18\\1a&H00&\\1c&HAAAAAA&}⌨ [Arrows] Navigate [Enter] Play [Shift+Enter] Append [N] [N] Next Page [P] Prev Page [Ctrl+R] Refresh [ESC] Close\n", START_X, footer_y)
+    ass = ass .. string.format("{\\an7\\pos(%d,%d)}{\\fs18\\1a&H00&\\1c&F0DCF5&}⌨ [Arrows] Navigate [Enter] Play [Shift+Enter] Append [N] [N] Next Page [P] Prev Page [Ctrl+R] Refresh [ESC] Close\n", START_X, footer_y)
 
     ov_ass.data = ass
     ov_ass:update()
@@ -836,12 +854,14 @@ end
 
 local function close_grid()
     state.active = false
+    state.pending_cursor = nil
     ov_ass:remove()
     clear_overlays()
     if state.feedback_timer then state.feedback_timer:kill() end
     state.feedback = nil
     state.feedback_timer = nil
     restore_window()
+    show_uosc_elements()
     mp.remove_key_binding("grid-up")
     mp.remove_key_binding("grid-down")
     mp.remove_key_binding("grid-left")
@@ -894,8 +914,31 @@ local open_uosc_results
 local function bind_keys()
     mp.add_forced_key_binding("UP", "grid-up", function() move_cursor(0, -1) end)
     mp.add_forced_key_binding("DOWN", "grid-down", function() move_cursor(0, 1) end)
-    mp.add_forced_key_binding("LEFT", "grid-left", function() move_cursor(-1, 0) end)
-    mp.add_forced_key_binding("RIGHT", "grid-right", function() move_cursor(1, 0) end)
+
+       mp.add_forced_key_binding("LEFT", "grid-left", function()
+        if state.cursor > 1 then
+            state.cursor = state.cursor - 1
+            draw_grid()
+        elseif state.page > 1 then
+            -- first video on the page: go back a page, landing on its last video
+            state.pending_cursor = "last"
+            fetch_and_render(state.mode, state.query, state.page - 1)
+        end
+    end)
+
+    mp.add_forced_key_binding("RIGHT", "grid-right", function()
+        if state.cursor < #state.results then
+            state.cursor = state.cursor + 1
+            draw_grid()
+        elseif state.page * opts.page_size < #state.raw_entries then
+            -- last video on the page: go to the next page
+            fetch_and_render(state.mode, state.query, state.page + 1)
+        else
+            show_feedback("Last page")
+        end
+    end)
+    
+    
     mp.add_forced_key_binding("ENTER", "grid-enter", function() execute_selection(false) end)
     mp.add_forced_key_binding("Shift+ENTER", "grid-append", function() execute_selection(true) end)
     mp.add_forced_key_binding("ESC", "grid-esc", close_grid)
@@ -1516,7 +1559,14 @@ function fetch_and_render(mode, query, page)
         state.query = query
         state.page = page
         state.cursor = 1
+
+                if state.pending_cursor == "last" then
+            state.cursor = math.max(1, #page_results)
+        end
+        
+        state.pending_cursor = nil
         state.active = true
+        hide_uosc_elements()
 
         clear_overlays()
         bind_keys()
@@ -1595,7 +1645,7 @@ function fetch_and_render(mode, query, page)
                 state.fetching = false
                 if not entries or #entries == 0 then
                     ov_ass.data = string.format(
-                        "{\\an5}{\\pos(%d,%d)}{\\fs36\\1c&H0000FF&}Related: %s",
+                        "{\\an5}{\\pos(%d,%d)}{\\fs36\\1c&000000&\\3c&H0000FF&\\bord3}Related: %s",
                         osd_w / 2, osd_h / 2, escape_ass(err or "no results")
                     )
                     ov_ass:update()
@@ -1686,7 +1736,7 @@ function fetch_and_render(mode, query, page)
                 msg.error("yt-dlp feed failed: status=" .. tostring(res and res.status)
                     .. " stderr=" .. tostring(res and res.stderr))
                 ov_ass.data = string.format(
-                    "{\\an5}{\\pos(%d,%d)}{\\fs40\\1c&H0000FF&}Feed Failed. Check console.",
+                    "{\\an5}{\\pos(%d,%d)}{\\fs40\\1c&000000&\\3c&H0000FF&\\bord3}Feed Failed. Check console.",
                     osd_w/2, osd_h/2
                 )
                 ov_ass:update()
@@ -1706,7 +1756,7 @@ function fetch_and_render(mode, query, page)
 
             if #entries == 0 then
                 ov_ass.data = string.format(
-                    "{\\an5}{\\pos(%d,%d)}{\\fs40\\1c&H0000FF&}Feed empty: %s",
+                    "{\\an5}{\\pos(%d,%d)}{\\fs40\\1c&000000&\\3c&H0000FF&\\bord3}Feed empty: %s",
                     osd_w/2, osd_h/2, feed_def.label
                 )
                 ov_ass:update()
@@ -1780,7 +1830,7 @@ function fetch_and_render(mode, query, page)
             local osd_w = mp.get_property_number("osd-width") or 1280
             local osd_h = mp.get_property_number("osd-height") or 720
             ov_ass.data = string.format(
-                "{\\an5}{\\pos(%d,%d)}{\\fs40\\1c&H0000FF&}Search Failed. Check console.",
+                "{\\an5}{\\pos(%d,%d)}{\\fs40\\1c&000000&\\3c&H0000FF&\\bord3}Search Failed. Check console.",
                 osd_w/2, osd_h/2
             )
             ov_ass:update()
